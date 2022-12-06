@@ -1,4 +1,5 @@
 //! Demo app for egui
+#![allow(clippy::missing_errors_doc)]
 
 mod apps;
 mod backend_panel;
@@ -34,13 +35,7 @@ impl WebHandle {
     #[wasm_bindgen]
     pub fn stop_web(&self) -> Result<(), wasm_bindgen::JsValue> {
         let mut app = self.handle.lock();
-        let res = app.destroy();
-
-        // let numw = Arc::weak_count(&app);
-        // let nums = Arc::strong_count(&app);
-        // tracing::debug!("runner ref {:?}, {:?}", numw, nums);
-
-        res
+        app.destroy()
     }
 
     #[wasm_bindgen]
@@ -64,15 +59,13 @@ pub fn init_wasm_hooks() {
 #[wasm_bindgen]
 pub async fn start_separate(canvas_id: &str) -> Result<WebHandle, wasm_bindgen::JsValue> {
     let web_options = eframe::WebOptions::default();
-    let handle = eframe::start_web(
+    eframe::start_web(
         canvas_id,
         web_options,
         Box::new(|cc| Box::new(WrapApp::new(cc))),
     )
     .await
-    .map(|handle| WebHandle { handle });
-
-    handle
+    .map(|handle| WebHandle { handle })
 }
 
 /// This is the entry-point for all the web-assembly.

@@ -75,7 +75,7 @@ impl Region {
 // ----------------------------------------------------------------------------
 
 /// Layout direction, one of [`LeftToRight`](Direction::LeftToRight), [`RightToLeft`](Direction::RightToLeft), [`TopDown`](Direction::TopDown), [`BottomUp`](Direction::BottomUp).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Direction {
     LeftToRight,
@@ -114,7 +114,7 @@ impl Direction {
 /// });
 /// # });
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 // #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Layout {
     /// Main axis direction
@@ -183,7 +183,7 @@ impl Layout {
 
     /// Place elements vertically, top to bottom.
     ///
-    /// Use the provided horizontal alignmen.
+    /// Use the provided horizontal alignment.
     #[inline(always)]
     pub fn top_down(halign: Align) -> Self {
         Self {
@@ -196,7 +196,7 @@ impl Layout {
         }
     }
 
-    /// Top-down layout justifed so that buttons etc fill the full available width.
+    /// Top-down layout justified so that buttons etc fill the full available width.
     #[inline(always)]
     pub fn top_down_justified(halign: Align) -> Self {
         Self::top_down(halign).with_cross_justify(true)
@@ -204,7 +204,7 @@ impl Layout {
 
     /// Place elements vertically, bottom up.
     ///
-    /// Use the provided horizontal alignmen.
+    /// Use the provided horizontal alignment.
     #[inline(always)]
     pub fn bottom_up(halign: Align) -> Self {
         Self {
@@ -231,6 +231,8 @@ impl Layout {
 
     /// For when you want to add a single widget to a layout, and that widget
     /// should use up all available space.
+    ///
+    /// Only one widget may be added to the inner `Ui`!
     #[inline(always)]
     pub fn centered_and_justified(main_dir: Direction) -> Self {
         Self {

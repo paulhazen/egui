@@ -21,11 +21,12 @@ pub enum TextStyle {
     /// Normal labels. Easily readable, doesn't take up too much space.
     Body,
 
-    /// Same size as [`Self::Body`], but used when monospace is important (for aligning number, code snippets, etc).
+    /// Same size as [`Self::Body`], but used when monospace is important (for code snippets, aligning numbers, etc).
     Monospace,
 
     /// Buttons. Maybe slightly bigger than [`Self::Body`].
-    /// Signifies that he item is interactive.
+    ///
+    /// Signifies that he item can be interacted with.
     Button,
 
     /// Heading. Probably larger than [`Self::Body`].
@@ -291,6 +292,11 @@ pub struct Spacing {
     pub combo_height: f32,
 
     pub scroll_bar_width: f32,
+
+    /// Margin between contents and scroll bar.
+    pub scroll_bar_inner_margin: f32,
+    /// Margin between scroll bar and the outer container (e.g. right of a vertical scroll bar).
+    pub scroll_bar_outer_margin: f32,
 }
 
 impl Spacing {
@@ -586,16 +592,25 @@ impl WidgetVisuals {
 }
 
 /// Options for help debug egui by adding extra visualization
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DebugOptions {
     /// However over widgets to see their rectangles
     pub debug_on_hover: bool,
+
     /// Show which widgets make their parent wider
     pub show_expand_width: bool,
+
     /// Show which widgets make their parent higher
     pub show_expand_height: bool,
+
     pub show_resize: bool,
+
+    /// Show an overlay on all interactive widgets.
+    pub show_interactive_widgets: bool,
+
+    /// Show what widget blocks the interaction of another widget.
+    pub show_blocking_widget: bool,
 }
 
 // ----------------------------------------------------------------------------
@@ -648,6 +663,8 @@ impl Default for Spacing {
             tooltip_width: 600.0,
             combo_height: 200.0,
             scroll_bar_width: 8.0,
+            scroll_bar_inner_margin: 4.0,
+            scroll_bar_outer_margin: 0.0,
             indent_ends_with_horizontal_line: false,
         }
     }
@@ -658,7 +675,7 @@ impl Default for Interaction {
         Self {
             resize_grab_radius_side: 5.0,
             resize_grab_radius_corner: 10.0,
-            show_tooltips_only_when_still: false,
+            show_tooltips_only_when_still: true,
         }
     }
 }
@@ -931,6 +948,8 @@ impl Spacing {
             indent_ends_with_horizontal_line,
             combo_height,
             scroll_bar_width,
+            scroll_bar_inner_margin,
+            scroll_bar_outer_margin,
         } = self;
 
         ui.add(slider_vec2(item_spacing, 0.0..=20.0, "Item spacing"));
@@ -1011,7 +1030,15 @@ impl Spacing {
         });
         ui.horizontal(|ui| {
             ui.add(DragValue::new(scroll_bar_width).clamp_range(0.0..=32.0));
-            ui.label("Scroll-bar width width");
+            ui.label("Scroll-bar width");
+        });
+        ui.horizontal(|ui| {
+            ui.add(DragValue::new(scroll_bar_inner_margin).clamp_range(0.0..=32.0));
+            ui.label("Scroll-bar inner margin");
+        });
+        ui.horizontal(|ui| {
+            ui.add(DragValue::new(scroll_bar_outer_margin).clamp_range(0.0..=32.0));
+            ui.label("Scroll-bar outer margin");
         });
 
         ui.horizontal(|ui| {
@@ -1254,21 +1281,33 @@ impl DebugOptions {
     pub fn ui(&mut self, ui: &mut crate::Ui) {
         let Self {
             debug_on_hover,
-            show_expand_width: debug_expand_width,
-            show_expand_height: debug_expand_height,
-            show_resize: debug_resize,
+            show_expand_width,
+            show_expand_height,
+            show_resize,
+            show_interactive_widgets,
+            show_blocking_widget,
         } = self;
 
         ui.checkbox(debug_on_hover, "Show debug info on hover");
         ui.checkbox(
-            debug_expand_width,
+            show_expand_width,
             "Show which widgets make their parent wider",
         );
         ui.checkbox(
-            debug_expand_height,
+            show_expand_height,
             "Show which widgets make their parent higher",
         );
-        ui.checkbox(debug_resize, "Debug Resize");
+        ui.checkbox(show_resize, "Debug Resize");
+
+        ui.checkbox(
+            show_interactive_widgets,
+            "Show an overlay on all interactive widgets",
+        );
+
+        ui.checkbox(
+            show_blocking_widget,
+            "Show wha widget blocks the interaction of another widget",
+        );
 
         ui.vertical_centered(|ui| reset_button(ui, self));
     }

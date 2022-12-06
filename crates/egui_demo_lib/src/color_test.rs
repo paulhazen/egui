@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use egui::{color::*, widgets::color_picker::show_color, TextureFilter, *};
+use egui::{color::*, widgets::color_picker::show_color, TextureOptions, *};
 
 const GRADIENT_SIZE: Vec2 = vec2(256.0, 18.0);
 
@@ -98,7 +98,6 @@ impl ColorTest {
         // TODO(emilk): test color multiplication (image tint),
         // to make sure vertex and texture color multiplication is done in linear space.
 
-        ui.separator();
         ui.label("Gamma interpolation:");
         self.show_gradients(ui, WHITE, (RED, GREEN), Interpolation::Gamma);
 
@@ -372,7 +371,7 @@ impl TextureManager {
                     size: [width, height],
                     pixels,
                 },
-                TextureFilter::Linear,
+                TextureOptions::LINEAR,
             )
         })
     }

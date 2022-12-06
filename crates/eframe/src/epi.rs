@@ -10,7 +10,8 @@
 use std::any::Any;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::native::run::RequestRepaintEvent;
+pub use crate::native::run::UserEvent;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub use winit::event_loop::EventLoopBuilder;
 
@@ -19,7 +20,7 @@ pub use winit::event_loop::EventLoopBuilder;
 /// You can configure any platform specific details required on top of the default configuration
 /// done by `EFrame`.
 #[cfg(not(target_arch = "wasm32"))]
-pub type EventLoopBuilderHook = Box<dyn FnOnce(&mut EventLoopBuilder<RequestRepaintEvent>)>;
+pub type EventLoopBuilderHook = Box<dyn FnOnce(&mut EventLoopBuilder<UserEvent>)>;
 
 /// This is how your app is created.
 ///
@@ -75,7 +76,7 @@ pub trait App {
     ///
     /// You need to implement this if you want to be able to access the application from JS using [`AppRunner::app_mut`].
     ///
-    /// This is needed because downcasting Box<dyn App> -> Box<dyn Any> to get &ConcreteApp is not simple in current rust.
+    /// This is needed because downcasting `Box<dyn App>` -> `Box<dyn Any>` to get &`ConcreteApp` is not simple in current rust.
     ///
     /// Just copy-paste this as your implementation:
     /// ```ignore
@@ -233,6 +234,7 @@ pub struct NativeOptions {
     /// See [winit's documentation][with_fullsize_content_view] for information on Mac-specific options.
     ///
     /// [with_fullsize_content_view]: https://docs.rs/winit/latest/x86_64-apple-darwin/winit/platform/macos/trait.WindowBuilderExtMacOS.html#tymethod.with_fullsize_content_view
+    #[cfg(target_os = "macos")]
     pub fullsize_content: bool,
 
     /// On Windows: enable drag and drop support. Drag and drop can
@@ -363,6 +365,10 @@ pub struct NativeOptions {
     ///
     /// Wayland desktop currently not supported.
     pub centered: bool,
+
+    /// Configures wgpu instance/device/adapter/surface creation and renderloop.
+    #[cfg(feature = "wgpu")]
+    pub wgpu_options: egui_wgpu::WgpuConfiguration,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -371,6 +377,8 @@ impl Clone for NativeOptions {
         Self {
             icon_data: self.icon_data.clone(),
             event_loop_builder: None, // Skip any builder callbacks if cloning
+            #[cfg(feature = "wgpu")]
+            wgpu_options: self.wgpu_options.clone(),
             ..*self
         }
     }
@@ -384,6 +392,7 @@ impl Default for NativeOptions {
             maximized: false,
             decorated: true,
             fullscreen: false,
+            #[cfg(target_os = "macos")]
             fullsize_content: false,
             drag_and_drop_support: true,
             icon_data: None,
@@ -407,6 +416,8 @@ impl Default for NativeOptions {
             #[cfg(feature = "glow")]
             shader_version: None,
             centered: false,
+            #[cfg(feature = "wgpu")]
+            wgpu_options: egui_wgpu::WgpuConfiguration::default(),
         }
     }
 }
@@ -443,7 +454,7 @@ pub struct WebOptions {
     ///
     /// See also [`Self::default_theme`].
     ///
-    /// Default: `false`.
+    /// Default: `true`.
     pub follow_system_theme: bool,
 
     /// Which theme to use in case [`Self::follow_system_theme`] is `false`
@@ -457,6 +468,10 @@ pub struct WebOptions {
     /// Default: [`WebGlContextOption::BestFirst`].
     #[cfg(feature = "glow")]
     pub webgl_context_option: WebGlContextOption,
+
+    /// Configures wgpu instance/device/adapter/surface creation and renderloop.
+    #[cfg(feature = "wgpu")]
+    pub wgpu_options: egui_wgpu::WgpuConfiguration,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -465,8 +480,26 @@ impl Default for WebOptions {
         Self {
             follow_system_theme: true,
             default_theme: Theme::Dark,
+
             #[cfg(feature = "glow")]
             webgl_context_option: WebGlContextOption::BestFirst,
+
+            #[cfg(feature = "wgpu")]
+            wgpu_options: egui_wgpu::WgpuConfiguration {
+                // WebGPU is not stable enough yet, use WebGL emulation
+                backends: wgpu::Backends::GL,
+                device_descriptor: wgpu::DeviceDescriptor {
+                    label: Some("egui wgpu device"),
+                    features: wgpu::Features::default(),
+                    limits: wgpu::Limits {
+                        // When using a depth buffer, we have to be able to create a texture
+                        // large enough for the entire surface, and we want to support 4k+ displays.
+                        max_texture_dimension_2d: 8192,
+                        ..wgpu::Limits::downlevel_webgl2_defaults()
+                    },
+                },
+                ..Default::default()
+            },
         }
     }
 }
@@ -765,6 +798,9 @@ impl Frame {
 #[derive(Clone, Debug)]
 #[cfg(target_arch = "wasm32")]
 pub struct WebInfo {
+    /// The browser user agent.
+    pub user_agent: String,
+
     /// Information about the URL.
     pub location: Location,
 }
